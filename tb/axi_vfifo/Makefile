@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Alex Forencich
+# Copyright (c) 2023 Alex Forencich
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,39 @@ WAVES ?= 0
 COCOTB_HDL_TIMEUNIT = 1ns
 COCOTB_HDL_TIMEPRECISION = 1ps
 
-DUT      = axil_ram
+DUT      = axi_vfifo
 TOPLEVEL = $(DUT)
 MODULE   = test_$(DUT)
 VERILOG_SOURCES += ../../rtl/$(DUT).v
+VERILOG_SOURCES += ../../rtl/axi_vfifo_raw.v
+VERILOG_SOURCES += ../../rtl/axi_vfifo_raw_wr.v
+VERILOG_SOURCES += ../../rtl/axi_vfifo_raw_rd.v
+VERILOG_SOURCES += ../../rtl/axi_vfifo_enc.v
+VERILOG_SOURCES += ../../rtl/axi_vfifo_dec.v
 
 # module parameters
-export PARAM_DATA_WIDTH := 32
-export PARAM_ADDR_WIDTH := 16
-export PARAM_STRB_WIDTH := $(shell expr $(PARAM_DATA_WIDTH) / 8 )
-export PARAM_PIPELINE_OUTPUT := 0
+export PARAM_AXI_CH := 2
+export PARAM_AXI_DATA_WIDTH := 512
+export PARAM_AXI_ADDR_WIDTH := 16
+export PARAM_AXI_STRB_WIDTH := $(shell expr $(PARAM_AXI_DATA_WIDTH) / 8 )
+export PARAM_AXI_ID_WIDTH := 8
+export PARAM_AXI_MAX_BURST_LEN := 16
+export PARAM_AXIS_DATA_WIDTH := $(PARAM_AXI_DATA_WIDTH)
+export PARAM_AXIS_KEEP_ENABLE := $(shell expr $(PARAM_AXIS_DATA_WIDTH) \> 8 )
+export PARAM_AXIS_KEEP_WIDTH := $(shell expr $(PARAM_AXIS_DATA_WIDTH) / 8 )
+export PARAM_AXIS_LAST_ENABLE := 1
+export PARAM_AXIS_ID_ENABLE := 1
+export PARAM_AXIS_ID_WIDTH := 8
+export PARAM_AXIS_DEST_ENABLE := 1
+export PARAM_AXIS_DEST_WIDTH := 8
+export PARAM_AXIS_USER_ENABLE := 1
+export PARAM_AXIS_USER_WIDTH := 1
+export PARAM_LEN_WIDTH := $(PARAM_AXI_ADDR_WIDTH)
+export PARAM_MAX_SEG_WIDTH := 256
+export PARAM_WRITE_FIFO_DEPTH := 64
+export PARAM_WRITE_MAX_BURST_LEN := $(shell expr $(PARAM_WRITE_FIFO_DEPTH) / 4 )
+export PARAM_READ_FIFO_DEPTH := 128
+export PARAM_READ_MAX_BURST_LEN := $(PARAM_WRITE_MAX_BURST_LEN)
 
 ifeq ($(SIM), icarus)
 	PLUSARGS += -fst
@@ -47,7 +70,7 @@ ifeq ($(SIM), icarus)
 		COMPILE_ARGS += -s iverilog_dump
 	endif
 else ifeq ($(SIM), verilator)
-	COMPILE_ARGS += -Wno-SELRANGE -Wno-WIDTH
+	COMPILE_ARGS += -Wno-SELRANGE -Wno-WIDTH -Wno-CASEINCOMPLETE
 
 	COMPILE_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-G$(subst PARAM_,,$(v))=$($(v)))
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Alex Forencich
+# Copyright (c) 2023 Alex Forencich
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,28 @@ WAVES ?= 0
 COCOTB_HDL_TIMEUNIT = 1ns
 COCOTB_HDL_TIMEPRECISION = 1ps
 
-DUT      = axil_ram
+DUT      = axi_vfifo_raw
 TOPLEVEL = $(DUT)
 MODULE   = test_$(DUT)
 VERILOG_SOURCES += ../../rtl/$(DUT).v
+VERILOG_SOURCES += ../../rtl/$(DUT)_wr.v
+VERILOG_SOURCES += ../../rtl/$(DUT)_rd.v
 
 # module parameters
-export PARAM_DATA_WIDTH := 32
-export PARAM_ADDR_WIDTH := 16
-export PARAM_STRB_WIDTH := $(shell expr $(PARAM_DATA_WIDTH) / 8 )
-export PARAM_PIPELINE_OUTPUT := 0
+export PARAM_SEG_WIDTH := 32
+export PARAM_SEG_CNT := 1
+export PARAM_AXI_DATA_WIDTH := $(shell expr $(PARAM_SEG_WIDTH) \* $(PARAM_SEG_CNT) )
+export PARAM_AXI_ADDR_WIDTH := 16
+export PARAM_AXI_STRB_WIDTH := $(shell expr $(PARAM_AXI_DATA_WIDTH) / 8 )
+export PARAM_AXI_ID_WIDTH := 8
+export PARAM_AXI_MAX_BURST_LEN := 16
+export PARAM_LEN_WIDTH := $(PARAM_AXI_ADDR_WIDTH)
+export PARAM_WRITE_FIFO_DEPTH := 64
+export PARAM_WRITE_MAX_BURST_LEN := $(shell expr $(PARAM_WRITE_FIFO_DEPTH) / 4 )
+export PARAM_READ_FIFO_DEPTH := 128
+export PARAM_READ_MAX_BURST_LEN := $(PARAM_WRITE_MAX_BURST_LEN)
+export PARAM_WATERMARK_LEVEL := $(shell expr $(PARAM_WRITE_FIFO_DEPTH) / 2 )
+export PARAM_CTRL_OUT_EN := 0
 
 ifeq ($(SIM), icarus)
 	PLUSARGS += -fst
@@ -47,7 +59,7 @@ ifeq ($(SIM), icarus)
 		COMPILE_ARGS += -s iverilog_dump
 	endif
 else ifeq ($(SIM), verilator)
-	COMPILE_ARGS += -Wno-SELRANGE -Wno-WIDTH
+	COMPILE_ARGS += -Wno-SELRANGE -Wno-WIDTH -Wno-CASEINCOMPLETE
 
 	COMPILE_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-G$(subst PARAM_,,$(v))=$($(v)))
 
